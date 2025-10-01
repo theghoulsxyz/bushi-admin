@@ -153,7 +153,7 @@ export default function BarbershopAdminPanel() {
   return (
     <>
       <div className="min-h-screen w-full bg-black text-white">
-        <div className="max-w-6xl mx-auto p-4 md:p-8">
+        <div className="max-w-6xl mx-auto p-3 md:p-8">
           <div className="flex flex-col items-center gap-3 mb-6">
             {BRAND.logoLight && (
               <img
@@ -177,7 +177,7 @@ export default function BarbershopAdminPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-2 md:gap-4 px-2 md:px-0 max-w-[680px] mx-auto md:max-w-none">
             {matrix.flat().map((date, idx) => {
               const inMonth = date.getMonth() === currentMonth;
               const iso = toISODate(date);
@@ -185,13 +185,10 @@ export default function BarbershopAdminPanel() {
               return (
                 <div
                   key={idx}
-                  className={`rounded-2xl flex items-center justify-center p-6 md:p-8 bg-neutral-900 text-white border transition cursor-pointer ${inMonth ? "" : "opacity-40"} ${isToday ? "border-white" : "border-neutral-800"}`}
+                  className={`rounded-2xl flex items-center justify-center bg-neutral-900 text-white border transition cursor-pointer aspect-[0.78] md:aspect-square p-3 md:p-6 ${inMonth ? "" : "opacity-40"} ${isToday ? "border-white" : "border-neutral-800"}`}
                   onClick={() => openDay(date)}
                 >
-                  <div
-                    className="select-none"
-                    style={{ fontFamily: BRAND.fontScript, fontSize: "2.25rem" }}
-                  >
+                  <div className="select-none text-[clamp(1.1rem,6.2vw,1.8rem)] md:text-[2rem]" style={{ fontFamily: BRAND.fontScript }}>
                     {date.getDate()}
                   </div>
                 </div>
