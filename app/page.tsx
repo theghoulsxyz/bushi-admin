@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
@@ -114,12 +113,16 @@ function Modal({ open, onClose, title, children, footer }: { open: boolean; onCl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative bg-neutral-950 text-white rounded-xl shadow-2xl w-screen h-screen md:w-[min(760px,96vw)] md:h-[90vh] overflow-hidden">
-        <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between sticky top-0 bg-neutral-950">
+      {/* Mobile-safe full-height container using dynamic viewport and flex layout */}
+      <div className="relative bg-neutral-950 text-white rounded-none md:rounded-xl shadow-2xl w-screen h-dvh md:w-[min(760px,96vw)] md:h-[90vh] flex flex-col">
+        {/* Header (always visible) */}
+        <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between flex-none">
           <h3 className="text-base md:text-lg font-bold tracking-wide" style={{ fontFamily: BRAND.fontTitle }}>{title}</h3>
         </div>
-        <div className="p-4 md:p-5 overflow-auto h-[calc(100%-7rem)] md:h-auto">{children}</div>
-        <div className="px-4 md:px-5 py-3 border-t border-neutral-800 bg-neutral-900 sticky bottom-0 flex items-center justify-end">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-auto p-4 md:p-5">{children}</div>
+        {/* Footer (always visible) with safe-area padding for iOS */}
+        <div className="px-4 md:px-5 py-3 border-t border-neutral-800 bg-neutral-900 flex items-center justify-end flex-none pb-[max(env(safe-area-inset-bottom),0px)]">
           {footer}
         </div>
       </div>
@@ -328,7 +331,7 @@ function runDevTests() {
   );
   assert(DAY_SLOTS[0] === "08:00", `First slot should be 08:00, got ${DAY_SLOTS[0]}`);
   assert(DAY_SLOTS[DAY_SLOTS.length - 1] === "21:30", `Last slot should be 21:30, got ${DAY_SLOTS[DAY_SLOTS.length - 1]}`);
-  assert(DAY_SLOTS.every((t) => /^(\\d{2}):(\\d{2})$/.test(t)), "Slots must be HH:MM formatted");
+  assert(DAY_SLOTS.every((t) => /^(\d{2}):(\d{2})$/.test(t)), "Slots must be HH:MM formatted");
 
   // Month grid 6x7
   const m = getMonthMatrix(2025, 0);
