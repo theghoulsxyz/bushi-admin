@@ -87,6 +87,7 @@ const writeStore = (data: Record<string, Record<string, string>>) => {
 // Icons (from /public)
 const ICONS = {
   delete: "/razor.png",
+  close: "/close.svg", // new close icon
 };
 
 function IconImg({ src, alt }: { src: string; alt: string }) {
@@ -129,13 +130,17 @@ function Modal({ open, onClose, title, children, footer }: { open: boolean; onCl
         {/* Header */}
         <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between flex-none">
           <h3 className="text-base md:text-lg font-bold tracking-wide" style={{ fontFamily: BRAND.fontTitle }}>{title}</h3>
+          <button onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-neutral-800 transition">
+            <IconImg src={ICONS.close} alt="Close" />
+          </button>
         </div>
         {/* Scrollable content */}
         <div className="flex-1 overflow-auto p-4 md:p-5">{children}</div>
-        {/* Footer with safe-area padding for iOS */}
-        <div className="px-4 md:px-5 py-3 border-t border-neutral-800 bg-neutral-900 flex items-center justify-end flex-none pb-[max(env(safe-area-inset-bottom),0px)]">
-          {footer}
-        </div>
+        {footer && (
+          <div className="px-4 md:px-5 py-3 border-t border-neutral-800 bg-neutral-900 flex items-center justify-end flex-none pb-[max(env(safe-area-inset-bottom),0px)]">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -144,6 +149,7 @@ function Modal({ open, onClose, title, children, footer }: { open: boolean; onCl
 // Main component
 export default function BarbershopAdminPanel() {
   useEffect(() => { injectBrandFonts(); }, []);
+  useEffect(() => { document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }, []);
 
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -163,8 +169,8 @@ export default function BarbershopAdminPanel() {
 
   return (
     <>
-      <div className="h-screen w-full bg-black text-white overflow-hidden">
-        <div className="max-w-6xl mx-auto p-3 md:p-8 h-full flex flex-col items-center justify-center">
+      <div className="fixed inset-0 w-full h-dvh bg-black text-white overflow-hidden">
+        <div className="max-w-6xl mx-auto p-3 md:p-8 h-full flex flex-col items-center justify-center select-none">
           <div className="flex flex-col items-center gap-3 mb-6">
             {BRAND.logoLight && (
               <img
@@ -238,7 +244,7 @@ function DayEditorModal({ open, onClose, dateISO, data, setData }: { open: boole
     : "Appointments";
 
   return (
-    <Modal open={open} onClose={onClose} title={title} footer={<Button onClick={onClose}>Close</Button>}>
+    <Modal open={open} onClose={onClose} title={title}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {DAY_SLOTS.map((time) => (
           <SlotRow key={time} time={time} name={dayData[time] || ""} onSave={setNameFor} />
@@ -327,63 +333,9 @@ function YearModal({ open, onClose, currentYear, setMonth }: { open: boolean; on
   if (!open) return null;
   const months = Array.from({ length: 12 }, (_, i) => new Date(currentYear, i, 1).toLocaleString(undefined, { month: "long" }));
   return (
-    <Modal open={open} onClose={onClose} title={`${currentYear}`} footer={<Button onClick={onClose}>Close</Button>}>
+    <Modal open={open} onClose={onClose} title={`${currentYear}`}>
       <div className="grid grid-cols-3 gap-3">
         {months.map((m, idx) => (
           <div
             key={idx}
-            onClick={() => { setMonth(idx); onClose(); }}
-            className="cursor-pointer p-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-center"
-            style={{ fontFamily: BRAND.fontTitle }}
-          >
-            {m}
-          </div>
-        ))}
-      </div>
-    </Modal>
-  );
-}
-
-// --- Dev Self-Tests ---
-function runDevTests() {
-  const failures: string[] = [];
-  const assert = (cond: boolean, msg: string) => { if (!cond) failures.push(msg); };
-
-  // Slots: count & bounds
-  assert(
-    DAY_SLOTS.length === (endHour - startHour) * (60 / slotMinutes),
-    `DAY_SLOTS length expected ${(endHour - startHour) * (60 / slotMinutes)}, got ${DAY_SLOTS.length}`
-  );
-  assert(DAY_SLOTS[0] === "08:00", `First slot should be 08:00, got ${DAY_SLOTS[0]}`);
-  assert(DAY_SLOTS[DAY_SLOTS.length - 1] === "21:30", `Last slot should be 21:30, got ${DAY_SLOTS[DAY_SLOTS.length - 1]}`);
-  assert(DAY_SLOTS.every((t) => /^(\d{2}):(\d{2})$/.test(t)), "Slots must be HH:MM formatted");
-
-  // Month grid 6x7
-  const m = getMonthMatrix(2025, 0);
-  assert(Array.isArray(m) && m.length === 6, `Matrix weeks should be 6, got ${m.length}`);
-  assert(m.every((row) => row.length === 7), `Each week should have 7 days`);
-  assert(m.flat().length === 42, `Matrix cells should be 42, got ${m.flat().length}`);
-
-  // Format helpers
-  const d = new Date(2025, 8, 7);
-  assert(toISODate(d) === "2025-09-07", `toISODate incorrect: ${toISODate(d)}`);
-  assert(pad(0) === "00" && pad(9) === "09" && pad(10) === "10", "pad should left-pad to 2 digits");
-
-  if (failures.length === 0) console.log("[Barber Admin] Tests passed ✔");
-  else console.warn("[Barber Admin] Tests FAILED:", failures);
-}
-if (typeof window !== "undefined") {
-  try {
-    runDevTests();
-    // Extra test: localStorage mirror integrity on write (smoke test)
-    try {
-      const before = localStorage.getItem(LS_KEY);
-      const sample = { "2099-01-01": { "08:00": "Test" } };
-      localStorage.setItem(LS_KEY, JSON.stringify(sample));
-      const after = localStorage.getItem(LS_KEY);
-      if (!after || after !== JSON.stringify(sample)) console.warn("[Barber Admin] LS write mirror failed");
-      // restore
-      if (before !== null) localStorage.setItem(LS_KEY, before);
-    } catch {}
-  } catch (e) { console.error("[Barber Admin] Tests crashed", e); }
-}
+            onClick={() => { setMonth(idx);
