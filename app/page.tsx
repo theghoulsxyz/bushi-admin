@@ -1,6 +1,16 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+/**
+ * Bushi Barbershop — Admin Panel
+ * - Month view (7x6 grid)
+ * - Click a day to open a full-day editor (08:00 → 21:30, every 30 minutes)
+ * - Names save on Enter or when the input loses focus
+ * - Two-step remove (Remove → Confirm/Cancel)
+ * - Dark aesthetic with Bushi fonts
+ * - Mobile safe modal (header/footer always visible), calendar page has no scroll
+ */
+
 // Branding
 const BRAND = {
   nickname: "Bushi",
@@ -27,7 +37,7 @@ const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 const toISODate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 const startHour = 8;
-const endHour = 22;
+const endHour = 22; // exclusive upper bound
 const slotMinutes = 30;
 
 function generateSlots() {
@@ -74,7 +84,7 @@ const writeStore = (data: Record<string, Record<string, string>>) => {
   if (canUseStorage()) localStorage.setItem(LS_KEY, JSON.stringify(data));
 };
 
-// Icons
+// Icons (from /public)
 const ICONS = {
   delete: "/razor.png",
 };
@@ -108,20 +118,21 @@ const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<H
 );
 TextInput.displayName = "TextInput";
 
+// Generic modal (mobile-safe)
 function Modal({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      {/* Mobile-safe full-height container using dynamic viewport and flex layout */}
-      <div className="relative bg-neutral-950 text-white rounded-none md:rounded-xl shadow-2xl w-screen h-dvh md:w-[min(760px,96vw)] md:h-[90vh] flex flex-col">
-        {/* Header (always visible) */}
+      {/* Full-height container using dynamic viewport and flex layout */}
+      <div className="relative bg-neutral-950 text-white rounded-none md:rounded-xl shadow-2xl w-screen h-dvh md:w-[min(760px,96vw)] md:h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
         <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between flex-none">
           <h3 className="text-base md:text-lg font-bold tracking-wide" style={{ fontFamily: BRAND.fontTitle }}>{title}</h3>
         </div>
-        {/* Scrollable content area */}
+        {/* Scrollable content */}
         <div className="flex-1 overflow-auto p-4 md:p-5">{children}</div>
-        {/* Footer (always visible) with safe-area padding for iOS */}
+        {/* Footer with safe-area padding for iOS */}
         <div className="px-4 md:px-5 py-3 border-t border-neutral-800 bg-neutral-900 flex items-center justify-end flex-none pb-[max(env(safe-area-inset-bottom),0px)]">
           {footer}
         </div>
@@ -152,8 +163,8 @@ export default function BarbershopAdminPanel() {
 
   return (
     <>
-      <div className="min-h-screen w-full bg-black text-white">
-        <div className="max-w-6xl mx-auto p-3 md:p-8">
+      <div className="h-screen w-full bg-black text-white overflow-hidden">
+        <div className="max-w-6xl mx-auto p-3 md:p-8 h-full flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-3 mb-6">
             {BRAND.logoLight && (
               <img
@@ -198,15 +209,18 @@ export default function BarbershopAdminPanel() {
         </div>
       </div>
 
+      {/* Defined below */}
       <DayEditorModal open={dayModal.open} dateISO={dayModal.dateISO} data={data} setData={setData} onClose={closeDay} />
       <YearModal open={showYear} onClose={() => setShowYear(false)} currentYear={currentYear} setMonth={setCurrentMonth} />
     </>
   );
 }
 
+// ---- Day Editor Modal ----
 function DayEditorModal({ open, onClose, dateISO, data, setData }: { open: boolean; onClose: () => void; dateISO: string | null; data: Record<string, Record<string, string>>; setData: React.Dispatch<React.SetStateAction<Record<string, Record<string, string>>>>; }) {
   const dayData = (dateISO && data[dateISO]) || {};
-  // Immediate, durable save: updates React state AND writes to localStorage synchronously
+
+  // Immediate & durable save: updates state and mirrors to localStorage synchronously
   const setNameFor = (time: string, name: string) => {
     if (!dateISO) return;
     setData((prev) => {
@@ -218,15 +232,23 @@ function DayEditorModal({ open, onClose, dateISO, data, setData }: { open: boole
       return copy;
     });
   };
+
+  const title = dateISO
+    ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "Appointments";
+
   return (
-    <Modal open={open} onClose={onClose} title={dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "Appointments"} footer={<Button onClick={onClose}>Close</Button>}>
+    <Modal open={open} onClose={onClose} title={title} footer={<Button onClick={onClose}>Close</Button>}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {DAY_SLOTS.map((time) => (<SlotRow key={time} time={time} name={dayData[time] || ""} onSave={setNameFor} />))}
+        {DAY_SLOTS.map((time) => (
+          <SlotRow key={time} time={time} name={dayData[time] || ""} onSave={setNameFor} />
+        ))}
       </div>
     </Modal>
   );
 }
 
+// ---- Single slot row ----
 function SlotRow({ time, name, onSave }: { time: string; name: string; onSave: (time: string, name: string) => void; }) {
   const [value, setValue] = useState(name);
   useEffect(() => setValue(name), [name]);
@@ -249,7 +271,7 @@ function SlotRow({ time, name, onSave }: { time: string; name: string; onSave: (
   const armRemove = () => {
     if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
     setConfirmRemove(true);
-    confirmTimerRef.current = window.setTimeout(() => setConfirmRemove(false), 3500); // auto-cancel after 3.5s
+    confirmTimerRef.current = window.setTimeout(() => setConfirmRemove(false), 3500);
   };
   const cancelRemove = () => {
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
@@ -300,6 +322,7 @@ function SlotRow({ time, name, onSave }: { time: string; name: string; onSave: (
   );
 }
 
+// ---- Year Modal ----
 function YearModal({ open, onClose, currentYear, setMonth }: { open: boolean; onClose: () => void; currentYear: number; setMonth: (m: number) => void; }) {
   if (!open) return null;
   const months = Array.from({ length: 12 }, (_, i) => new Date(currentYear, i, 1).toLocaleString(undefined, { month: "long" }));
@@ -307,7 +330,12 @@ function YearModal({ open, onClose, currentYear, setMonth }: { open: boolean; on
     <Modal open={open} onClose={onClose} title={`${currentYear}`} footer={<Button onClick={onClose}>Close</Button>}>
       <div className="grid grid-cols-3 gap-3">
         {months.map((m, idx) => (
-          <div key={idx} onClick={() => { setMonth(idx); onClose(); }} className="cursor-pointer p-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-center" style={{ fontFamily: BRAND.fontTitle }}>
+          <div
+            key={idx}
+            onClick={() => { setMonth(idx); onClose(); }}
+            className="cursor-pointer p-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-center"
+            style={{ fontFamily: BRAND.fontTitle }}
+          >
             {m}
           </div>
         ))}
