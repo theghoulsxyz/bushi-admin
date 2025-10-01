@@ -338,4 +338,14 @@ function YearModal({ open, onClose, currentYear, setMonth }: { open: boolean; on
         {months.map((m, idx) => (
           <div
             key={idx}
-            onClick={() => { setMonth(idx);
+            onClick={() => { setMonth(idx); onClose(); }}
+            className="cursor-pointer p-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-center"
+            style={{ fontFamily: BRAND.fontTitle }}
+          >
+            {m}
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
